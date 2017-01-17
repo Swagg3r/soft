@@ -1,0 +1,105 @@
+
+Some useful indications for exercices 1 and 2 are provided
+in the folllowing paper (sections 2.3 and 2.5):
+		https://pdos.csail.mit.edu/papers/ub:apsys12.pdf
+		
+% --------------------------------------------------------------------
+
+Exercise 1
+==========
+
+- after the first check, both len and offset are assumed to be positive
+- since signed integer overflow is undefined behavior, the compiler then assumes 
+  that offset + len cannot be < 0 and removes this check ...
+
+As a result if len and offset are large integers, the whole sanity check 
+is by-passed ...
+
+Possible solutions ?
+
+1. try to modify the ordering of the checa, e.g.,
+
+if ((offset + len > MAXSIZE) || ((offset + len < 0) && offset > 0 && len >= 0)) 
+    return -EFBIG // offset + len does overflow
+if (offset < 0 || len <= 0)
+    return -EINVAL;  
+
+    Not so easy ...
+
+2. With the GCC compiler:
+   use the "-fno-strict-overflow" option to tell the compiler 
+   to not consider such underflows as undefined behavior,
+   and use the "-fwrapv" option to "wrap around" in case of
+   overflows.
+
+% --------------------------------------------------------------------
+
+
+Exercise 2
+==========
+
+On this exemple, the check may be deleted by the compiler 
+(assuming that s is not NULL). The execution may then continue 
+with s mapped to address 0 ...
+
+
+		- comparaison "unsigned int" et "int" 
+				-> possibilite de boucle infinie ????
+
+Exercise 3
+==========
+
+
+Q1.  
+
+At least 3 possible runtime errors:
+
+1. Since the size of tab is unknown then nb can be strictly larger 
+   than tab, and tab may be accessed out of bounds ...
+   This may also occur in case of overflow, e.g., if 
+     nb*sizeof(unsined int) < nb (because of an overflow) 
+
+2. call to malloc with a size 0, which is undefined behavior in C
+If sizeof(unsined int) = 4 and nb =2E30, then  nb* sizeof(unsined int)=2E32 
+which becomes 0 (wrap-around).
+
+3. Similarly, if  nb*sizeof(unsined int) overflows, then the size of 
+   dest will be smaller than nb, and dest[i] may be out of bounds. 
+
+4. The heap can be full, hence the malloc return value would be 0 
+    and dest[i] would be an invalid memory acces.
+
+5. Since i is signed and nb is unsigned, then i<nb can become always 
+    true (for values of nb between 2E31 and 2E32-1). In this case 
+    the for loop may never terminate ...
+
+Q2. Errors 1-4 can be classified as vulnerabilities
+    since they lead to out-of-bounds array accesses. 
+    Error 5 could lead to a kind of "deny of service" 
+    (making the program looping forever).
+	 
+
+Q3. A possible solution (clearly not the only one !)
+
+UINT_MAX = maximal value that can be stored in an unsigned int
+	       (for 32 bits, UINT_MAX = 2E32 -1)
+
+void fun(unsigned int nb, int *tab, unsigned int size_tab) {
+     int *dst;
+     if (nb>size_tab) {printf("Destination array larger than source"); exit(0);}
+     if (nb > UINT_MAX/sizeof(unsigned int)) 
+           {printf("Overflow, destination arry too large"); exit(0);}
+     dst = (int *) malloc(sizeof(unsigned int)*nb);
+     if (!dst) {printf("Heao allocation problem\n") ; exit(0) ;}
+     for (unsigned int i=0; i <nb; i++)
+          { dst[i]=tab[i] ;}
+}
+
+Q4.
+
+The while loop is never executed because (-1) is converted into an unsigned int 
+and becomes equal to UINT_MAX ...   
+A possible solution is to replace ui by a (signed) int ...
+
+0
+
